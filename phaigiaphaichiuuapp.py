@@ -4,6 +4,12 @@ import html
 import random
 import base64
 import os
+import json
+
+
+# ==========================================
+# CẤU HÌNH TRANG
+# ==========================================
 
 st.set_page_config(
     page_title="Trường Đua Vịt",
@@ -11,12 +17,18 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# ==========================================
+# TIÊU ĐỀ
+# ==========================================
+
 st.title("🦆🏁 TRƯỜNG ĐUA VỊT 🏁🦆")
 st.caption("Nhập tên người chơi và xem ai về đích trước!")
 
-# =========================
+
+# ==========================================
 # NHẬP TÊN
-# =========================
+# ==========================================
 
 text_names = st.text_area(
     "👥 Nhập tên người tham gia — tối đa 50 người",
@@ -24,42 +36,56 @@ text_names = st.text_area(
     height=180
 )
 
+
 names = [
     x.strip()
     for x in text_names.splitlines()
     if x.strip()
 ]
 
+
 # Xóa tên trùng
 names = list(dict.fromkeys(names))
 
+
+# Giới hạn 50 người
 if len(names) > 50:
     st.warning("⚠️ Chỉ được tối đa 50 người!")
     names = names[:50]
 
-st.write(f"👥 Người tham gia: **{len(names)}/50**")
+
+st.write(
+    f"👥 Người tham gia: **{len(names)}/50**"
+)
+
+
+# ==========================================
+# NÚT BẮT ĐẦU
+# ==========================================
 
 start = st.button(
     "🚀🏁 BẮT ĐẦU ĐUA! 🏁🚀",
     use_container_width=True
 )
 
-# =========================
-# BẮT ĐẦU
-# =========================
+
+# ==========================================
+# BẮT ĐẦU CUỘC ĐUA
+# ==========================================
 
 if start:
 
     if len(names) < 2:
+
         st.warning(
             "⚠️ Cần ít nhất 2 người để bắt đầu cuộc đua!"
         )
 
     else:
 
-        # =========================
-        # ĐỌC FILE NHẠC
-        # =========================
+        # ==================================
+        # ĐỌC NHẠC
+        # ==================================
 
         music_data = ""
 
@@ -67,8 +93,9 @@ if start:
 
         if os.path.exists(music_path):
 
-            with open(music_path, "rb") as f:
-                music_bytes = f.read()
+            with open(music_path, "rb") as music_file:
+
+                music_bytes = music_file.read()
 
             music_base64 = base64.b64encode(
                 music_bytes
@@ -82,13 +109,14 @@ if start:
         else:
 
             st.warning(
-                "⚠️ Không tìm thấy file nhac.mp3. "
-                "Hãy đặt nhac.mp3 cùng thư mục với nguthichiu1app.py."
+                "⚠️ Không tìm thấy nhac.mp3. "
+                "Hãy đặt file nhac.mp3 cùng thư mục với app."
             )
 
-        # =========================
+
+        # ==================================
         # MÀU LÀN ĐUA
-        # =========================
+        # ==================================
 
         lane_colors = [
             "#FFE5EC",
@@ -101,26 +129,32 @@ if start:
             "#E0FFE8"
         ]
 
+
+        # ==================================
+        # TẠO LÀN ĐUA
+        # ==================================
+
         lanes = ""
 
         for i, name in enumerate(names):
 
-            lanes += f"""
+            safe_name = html.escape(name)
+
+            lanes += """
             <div
                 class="lane"
-                style="background:
-                {lane_colors[i % len(lane_colors)]};"
+                style="background:__LANE_COLOR__;"
             >
 
                 <div class="name">
-                    🦆 {html.escape(name)}
+                    🦆 __PLAYER_NAME__
                 </div>
 
                 <div class="road">
 
                     <div
                         class="duck"
-                        id="duck{i}"
+                        id="duck__INDEX__"
                     >
                         🦆
                     </div>
@@ -134,20 +168,57 @@ if start:
             </div>
             """
 
-        # =========================
+            lanes = lanes.replace(
+                "__LANE_COLOR__",
+                lane_colors[i % len(lane_colors)],
+                1
+            )
+
+            lanes = lanes.replace(
+                "__PLAYER_NAME__",
+                safe_name,
+                1
+            )
+
+            lanes = lanes.replace(
+                "__INDEX__",
+                str(i),
+                1
+            )
+
+
+        # ==================================
         # TỐC ĐỘ VỊT
-        # =========================
+        # ==================================
 
         speeds = [
             random.uniform(0.75, 2.1)
             for _ in names
         ]
 
-        # =========================
-        # HTML
-        # =========================
 
-        race_html = f"""
+        # ==================================
+        # DỮ LIỆU JAVASCRIPT
+        # ==================================
+
+        names_js = json.dumps(
+            names,
+            ensure_ascii=False
+        )
+
+        speeds_js = json.dumps(
+            speeds
+        )
+
+
+        # ==================================
+        # HTML
+        #
+        # KHÔNG DÙNG F-STRING
+        # => KHÔNG BỊ LỖI { }
+        # ==================================
+
+        race_html = r"""
 <!DOCTYPE html>
 
 <html>
@@ -158,13 +229,12 @@ if start:
 
 <style>
 
-* {{
+* {
     box-sizing: border-box;
-}}
+}
 
 html,
-body {{
-
+body {
     margin: 0;
     padding: 0;
 
@@ -176,10 +246,14 @@ body {{
     font-family: Arial, sans-serif;
 
     background: white;
-}}
+}
 
-.screen {{
 
+/* ==================================
+   MÀN HÌNH
+================================== */
+
+.screen {
     position: absolute;
 
     left: 0;
@@ -189,28 +263,25 @@ body {{
     height: 100%;
 
     display: none;
-}}
+}
 
-.screen.active {{
+.screen.active {
     display: flex;
-}}
+}
 
 
-/* =========================
+/* ==================================
    COUNTDOWN
-========================= */
+================================== */
 
-#countScreen {{
-
+#countScreen {
     align-items: center;
-
     justify-content: center;
 
     flex-direction: column;
-}}
+}
 
-#count {{
-
+#count {
     font-size: 110px;
 
     font-weight: 900;
@@ -219,55 +290,42 @@ body {{
         countPop
         0.8s
         ease;
-}}
+}
 
-@keyframes countPop {{
+@keyframes countPop {
 
-    0% {{
-
-        transform:
-            scale(0.2);
-
+    0% {
+        transform: scale(0.2);
         opacity: 0;
-    }}
+    }
 
-    60% {{
-
-        transform:
-            scale(1.25);
-
+    60% {
+        transform: scale(1.25);
         opacity: 1;
-    }}
+    }
 
-    100% {{
-
-        transform:
-            scale(1);
-
+    100% {
+        transform: scale(1);
         opacity: 1;
-    }}
-}}
+    }
+}
 
 
-/* =========================
-   RACE
-========================= */
+/* ==================================
+   TRƯỜNG ĐUA
+================================== */
 
-#raceScreen {{
-
-    display: none;
-
+#raceScreen {
     flex-direction: column;
 
     padding: 10px;
-}}
+}
 
-#raceScreen.active {{
+#raceScreen.active {
     display: flex;
-}}
+}
 
-.title {{
-
+.title {
     text-align: center;
 
     font-size: 28px;
@@ -275,10 +333,9 @@ body {{
     font-weight: 900;
 
     margin-bottom: 8px;
-}}
+}
 
-#raceList {{
-
+#raceList {
     flex: 1;
 
     overflow-y: auto;
@@ -286,21 +343,24 @@ body {{
     overflow-x: hidden;
 
     padding-right: 5px;
-}}
+}
 
-#raceList::-webkit-scrollbar {{
+#raceList::-webkit-scrollbar {
     width: 8px;
-}}
+}
 
-#raceList::-webkit-scrollbar-thumb {{
-
+#raceList::-webkit-scrollbar-thumb {
     background: #bbbbbb;
 
     border-radius: 10px;
-}}
+}
 
-.lane {{
 
+/* ==================================
+   LÀN
+================================== */
+
+.lane {
     height: 48px;
 
     margin: 4px 0;
@@ -312,10 +372,9 @@ body {{
     display: flex;
 
     align-items: center;
-}}
+}
 
-.name {{
-
+.name {
     width: 125px;
 
     font-size: 14px;
@@ -327,10 +386,14 @@ body {{
     overflow: hidden;
 
     text-overflow: ellipsis;
-}}
+}
 
-.road {{
 
+/* ==================================
+   ĐƯỜNG ĐUA
+================================== */
+
+.road {
     position: relative;
 
     flex: 1;
@@ -344,23 +407,21 @@ body {{
     overflow: hidden;
 
     background:
-
         repeating-linear-gradient(
-
             90deg,
-
             #eeeeee 0px,
-
             #eeeeee 30px,
-
             #ffffff 30px,
-
             #ffffff 60px
         );
-}}
+}
 
-.duck {{
 
+/* ==================================
+   VỊT
+================================== */
+
+.duck {
     position: absolute;
 
     left: 0%;
@@ -370,10 +431,14 @@ body {{
     font-size: 28px;
 
     z-index: 5;
-}}
+}
 
-.finish {{
 
+/* ==================================
+   ĐÍCH
+================================== */
+
+.finish {
     position: absolute;
 
     right: 4px;
@@ -381,15 +446,14 @@ body {{
     top: 1px;
 
     font-size: 26px;
-}}
+}
 
 
-/* =========================
+/* ==================================
    KẾT QUẢ
-========================= */
+================================== */
 
-#resultScreen {{
-
+#resultScreen {
     align-items: center;
 
     justify-content: center;
@@ -397,10 +461,9 @@ body {{
     flex-direction: column;
 
     padding: 15px;
-}}
+}
 
-#resultBox {{
-
+#resultBox {
     width: min(620px, 94%);
 
     max-height: 90%;
@@ -412,7 +475,6 @@ body {{
     border-radius: 25px;
 
     background:
-
         linear-gradient(
             135deg,
             #fff7b8,
@@ -422,48 +484,39 @@ body {{
     border: 3px solid #ffd43b;
 
     box-shadow:
-
         0 8px 30px
         rgba(0,0,0,0.18);
 
     animation:
-
         resultPop
         0.7s
         ease;
-}}
+}
 
-@keyframes resultPop {{
+@keyframes resultPop {
 
-    from {{
-
-        transform:
-            scale(0.5);
+    from {
+        transform: scale(0.5);
 
         opacity: 0;
-    }}
+    }
 
-    to {{
-
-        transform:
-            scale(1);
+    to {
+        transform: scale(1);
 
         opacity: 1;
-    }}
-}}
+    }
+}
 
-#resultBox h1 {{
-
-    margin:
-        0 0 18px;
+#resultBox h1 {
+    margin: 0 0 18px;
 
     text-align: center;
 
     font-size: 30px;
-}}
+}
 
-.rank {{
-
+.rank {
     margin: 7px 0;
 
     padding: 11px 14px;
@@ -477,15 +530,12 @@ body {{
     font-weight: bold;
 
     box-shadow:
-
         0 2px 6px
         rgba(0,0,0,0.1);
-}}
+}
 
-.rank.first {{
-
+.rank.first {
     background:
-
         linear-gradient(
             90deg,
             #ffe680,
@@ -493,15 +543,14 @@ body {{
         );
 
     font-size: 22px;
-}}
+}
 
 
-/* =========================
+/* ==================================
    BÓNG BAY
-========================= */
+================================== */
 
-.balloon {{
-
+.balloon {
     position: fixed;
 
     left: 0;
@@ -515,41 +564,37 @@ body {{
     z-index: 9999;
 
     animation:
-
         balloonUp
         3.5s
         linear
         forwards;
-}}
+}
 
-@keyframes balloonUp {{
+@keyframes balloonUp {
 
-    0% {{
-
+    0% {
         transform:
             translateY(0)
             rotate(0deg);
 
         opacity: 1;
-    }}
+    }
 
-    100% {{
-
+    100% {
         transform:
             translateY(-750px)
             rotate(360deg);
 
         opacity: 0;
-    }}
-}}
+    }
+}
 
 
-/* =========================
-   NÚT NHẠC DỰ PHÒNG
-========================= */
+/* ==================================
+   NÚT NHẠC
+================================== */
 
-#musicButton {{
-
+#musicButton {
     position: absolute;
 
     right: 12px;
@@ -577,7 +622,7 @@ body {{
         rgba(0,0,0,0.18);
 
     cursor: pointer;
-}}
+}
 
 </style>
 
@@ -587,9 +632,9 @@ body {{
 <body>
 
 
-<!-- =========================
+<!-- ==================================
      NHẠC
-========================= -->
+================================== -->
 
 <audio
     id="bgMusic"
@@ -598,7 +643,7 @@ body {{
 >
 
     <source
-        src="{music_data}"
+        src="__MUSIC_DATA__"
         type="audio/mpeg"
     >
 
@@ -613,9 +658,9 @@ body {{
 </button>
 
 
-<!-- =========================
-     COUNTDOWN
-========================= -->
+<!-- ==================================
+     3 - 2 - 1
+================================== -->
 
 <div
     id="countScreen"
@@ -629,9 +674,9 @@ body {{
 </div>
 
 
-<!-- =========================
-     RACE
-========================= -->
+<!-- ==================================
+     TRƯỜNG ĐUA
+================================== -->
 
 <div
     id="raceScreen"
@@ -639,23 +684,19 @@ body {{
 >
 
     <div class="title">
-
         🏁 TRƯỜNG ĐUA VỊT 🦆
-
     </div>
 
     <div id="raceList">
-
-        {lanes}
-
+        __LANES__
     </div>
 
 </div>
 
 
-<!-- =========================
-     RESULT
-========================= -->
+<!-- ==================================
+     KẾT QUẢ
+================================== -->
 
 <div
     id="resultScreen"
@@ -669,7 +710,6 @@ body {{
         </h1>
 
         <div id="ranking">
-
         </div>
 
     </div>
@@ -680,22 +720,22 @@ body {{
 <script>
 
 
-// =========================
+// ==================================
 // DỮ LIỆU
-// =========================
+// ==================================
 
-const names = {names};
+const names = __NAMES__;
 
-const speeds = {speeds};
+const speeds = __SPEEDS__;
 
 const ducks = [];
 
 const finishOrder = [];
 
 
-// =========================
+// ==================================
 // NHẠC
-// =========================
+// ==================================
 
 const bgMusic =
     document.getElementById(
@@ -708,65 +748,57 @@ const musicButton =
     );
 
 
-// Âm lượng
-
 bgMusic.volume = 0.45;
 
 
-// Thử tự phát nhạc
-
-function startMusic() {{
+function startMusic() {
 
     bgMusic
         .play()
-        .then(() => {{
+        .then(() => {
 
             musicButton.style.display =
                 "none";
 
-        }})
-        .catch(() => {{
-
-            // Nếu trình duyệt chặn
-            // autoplay thì hiện nút
+        })
+        .catch(() => {
 
             musicButton.style.display =
                 "block";
 
-        }});
-}}
+        });
 
+}
 
-// Nút bật nhạc dự phòng
 
 musicButton.addEventListener(
     "click",
-    () => {{
+    () => {
 
         bgMusic
             .play()
-            .then(() => {{
+            .then(() => {
 
                 musicButton.style.display =
                     "none";
 
-            }});
+            });
 
-    }}
+    }
 );
 
 
-// =========================
-// TẠO VỊT
-// =========================
+// ==================================
+// TẠO CÁC CON VỊT
+// ==================================
 
 for (
     let i = 0;
     i < names.length;
     i++
-) {{
+) {
 
-    ducks.push({{
+    ducks.push({
 
         element:
             document.getElementById(
@@ -779,29 +811,29 @@ for (
 
         finished: false
 
-    }});
+    });
 
-}}
+}
 
 
-// =========================
-// CHUYỂN MÀN HÌNH
-// =========================
+// ==================================
+// ĐỔI MÀN HÌNH
+// ==================================
 
-function showScreen(id) {{
+function showScreen(id) {
 
     document
         .querySelectorAll(
             ".screen"
         )
         .forEach(
-            screen => {{
+            screen => {
 
                 screen.classList.remove(
                     "active"
                 );
 
-            }}
+            }
         );
 
     document
@@ -809,12 +841,13 @@ function showScreen(id) {{
         .classList.add(
             "active"
         );
-}}
+
+}
 
 
-// =========================
+// ==================================
 // COUNTDOWN
-// =========================
+// ==================================
 
 let number = 3;
 
@@ -824,87 +857,93 @@ const count =
     );
 
 
-// Bắt đầu nhạc cùng lúc
-// với countdown
-
+// Bắt đầu nhạc
 startMusic();
 
 
 const countdown =
     setInterval(
-        () => {{
+        () => {
 
             number--;
 
+
             if (
                 number > 0
-            ) {{
+            ) {
 
                 count.innerText =
                     number;
 
+
                 count.style.animation =
                     "none";
 
+
                 void count.offsetWidth;
+
 
                 count.style.animation =
                     "countPop 0.8s ease";
 
-            }}
+            }
 
-            else {{
+
+            else {
 
                 clearInterval(
                     countdown
                 );
 
+
                 count.innerText =
                     "🦆💨";
 
+
                 setTimeout(
-                    () => {{
+                    () => {
 
                         showScreen(
                             "raceScreen"
                         );
 
+
                         setTimeout(
-                            () => {{
+                            () => {
 
                                 race();
 
-                            }},
+                            },
                             150
                         );
 
-                    }},
+                    },
                     500
                 );
 
-            }}
+            }
 
-        }},
+        },
         1000
     );
 
 
-// =========================
-// ĐUA
-// =========================
+// ==================================
+// CUỘC ĐUA
+// ==================================
 
-function race() {{
+function race() {
 
     let stillRunning =
         false;
 
 
     ducks.forEach(
-        (duck, index) => {{
+        (duck, index) => {
 
             if (
                 !duck.finished
-            ) {{
+            ) {
 
                 stillRunning =
                     true;
@@ -920,20 +959,20 @@ function race() {{
                 if (
                     Math.random()
                     < 0.012
-                ) {{
+                ) {
 
                     duck.position +=
                         Math.random()
                         * 1.5;
 
-                }}
+                }
 
 
                 // Về đích
 
                 if (
                     duck.position >= 93
-                ) {{
+                ) {
 
                     duck.position =
                         93;
@@ -945,46 +984,46 @@ function race() {{
                         index
                     );
 
-                }}
+                }
 
 
                 duck.element.style.left =
                     duck.position +
                     "%";
 
-            }}
+            }
 
-        }}
+        }
     );
 
 
     if (
         stillRunning
-    ) {{
+    ) {
 
         requestAnimationFrame(
             race
         );
 
-    }}
+    }
 
-    else {{
+    else {
 
         setTimeout(
             showResults,
             700
         );
 
-    }}
+    }
 
-}}
+}
 
 
-// =========================
+// ==================================
 // HIỆN KẾT QUẢ
-// =========================
+// ==================================
 
-function showResults() {{
+function showResults() {
 
     showScreen(
         "resultScreen"
@@ -1009,7 +1048,7 @@ function showResults() {{
 
 
     finishOrder.forEach(
-        (duckIndex, position) => {{
+        (duckIndex, position) => {
 
             const row =
                 document.createElement(
@@ -1023,13 +1062,13 @@ function showResults() {{
 
             if (
                 position === 0
-            ) {{
+            ) {
 
                 row.classList.add(
                     "first"
                 );
 
-            }}
+            }
 
 
             const medal =
@@ -1050,20 +1089,20 @@ function showResults() {{
                 row
             );
 
-        }}
+        }
     );
 
 
     createBalloons();
 
-}}
+}
 
 
-// =========================
+// ==================================
 // BÓNG BAY
-// =========================
+// ==================================
 
-function createBalloons() {{
+function createBalloons() {
 
     const items = [
         "🎈",
@@ -1079,10 +1118,10 @@ function createBalloons() {{
         let i = 0;
         i < 50;
         i++
-    ) {{
+    ) {
 
         setTimeout(
-            () => {{
+            () => {
 
                 const balloon =
                     document.createElement(
@@ -1124,32 +1163,61 @@ function createBalloons() {{
 
 
                 setTimeout(
-                    () => {{
+                    () => {
 
                         balloon.remove();
 
-                    }},
+                    },
                     5000
                 );
 
-            }},
+            },
             i * 70
         );
 
     }
 
-}}
+}
 
 </script>
+
 
 </body>
 
 </html>
 """
 
-        # =========================
-        # HIỂN THỊ
-        # =========================
+
+        # ==================================
+        # THAY DỮ LIỆU VÀO HTML
+        #
+        # Không dùng f-string
+        # ==================================
+
+        race_html = race_html.replace(
+            "__MUSIC_DATA__",
+            music_data
+        )
+
+        race_html = race_html.replace(
+            "__LANES__",
+            lanes
+        )
+
+        race_html = race_html.replace(
+            "__NAMES__",
+            names_js
+        )
+
+        race_html = race_html.replace(
+            "__SPEEDS__",
+            speeds_js
+        )
+
+
+        # ==================================
+        # CHẠY TRÒ CHƠI
+        # ==================================
 
         components.html(
             race_html,
